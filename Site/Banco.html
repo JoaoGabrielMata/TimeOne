@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Banco de Horas</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-image: url('https://images.unsplash.com/photo-1506784365847-bbad939e9335?auto=format&fit=crop&w=1920&q=80');
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      margin: 0;
+      padding: 0;
+      color: #fff;
+      text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.7);
+    }
+
+    .container {
+      background-color: rgba(0, 0, 0, 0.6);
+      padding: 40px 20px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1 {
+      font-size: 36px;
+      margin-bottom: 30px;
+    }
+
+    .botao-container {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+
+    button {
+      width: 220px;
+      padding: 15px;
+      font-size: 16px;
+      border: none;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #007bff, #00c6ff);
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 2px 2px 6px rgba(0,0,0,0.3);
+      transition: transform 0.2s, background 0.3s;
+    }
+
+    button:hover {
+      transform: scale(1.05);
+      background: linear-gradient(135deg, #0056b3, #0099cc);
+    }
+
+    #conteudo, #todosRegistros {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 20px;
+      border-radius: 10px;
+      max-width: 700px;
+      width: 90%;
+      margin-top: 20px;
+      color: white;
+    }
+
+    input, select {
+      padding: 8px;
+      border-radius: 5px;
+      border: none;
+      margin: 5px;
+      font-size: 14px;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    li {
+      margin-bottom: 8px;
+      background: rgba(255,255,255,0.2);
+      padding: 10px;
+      border-radius: 5px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .dia-com-registro {
+      color: #00ffcc;
+      font-weight: bold;
+    }
+
+    .btn-excluir {
+      margin-left: 10px;
+      background: red;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 5px;
+      color: white;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.3s;
+    }
+
+    .btn-excluir:hover {
+      background: darkred;
+    }
+  </style>
+
+  <!-- Adiciona a biblioteca jsPDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h1>Banco de Horas</h1>
+
+    <div class="botao-container">
+      <button onclick="mostrarRegistrar()">Registrar</button>
+      <button onclick="mostrarCalendario()">Calendário</button>
+      <button onclick="gerarPDF()">Gerar Relatório PDF</button>
+    </div>
+
+    <div id="conteudo"></div>
+    <div id="todosRegistros"></div>
+  </div>
+
+  <script>
+    function salvarRegistro() {
+      const data = document.getElementById("data").value;
+      const entrada = document.getElementById("entrada").value;
+      const saida = document.getElementById("saida").value;
+
+      if (!entrada || !saida) {
+        alert("Preencha entrada e saída.");
+        return;
+      }
+
+      const registros = JSON.parse(localStorage.getItem("registros") || "{}");
+      registros[data] = { entrada, saida };
+      localStorage.setItem("registros", JSON.stringify(registros));
+      alert("Registro salvo!");
+      mostrarTodosRegistros();
+    }
+
+    function mostrarRegistrar() {
+      const hoje = new Date().toISOString().split('T')[0];
+      document.getElementById("conteudo").innerHTML = `
+        <h2>Registrar Horário</h2>
+        <label>Data: <input type="date" id="data" value="${hoje}"></label><br>
+        <label>Entrada: <input type="time" id="entrada"></label><br>
+        <label>Saída: <input type="time" id="saida"></label><br>
+        <button onclick="salvarRegistro()">Salvar</button>
+      `;
+    }
+
+    function mostrarCalendario() {
+      const registros = JSON.parse(localStorage.getItem("registros") || "{}");
+      const anoAtual = new Date().getFullYear();
+      const mesAtual = new Date().getMonth();
+
+      let html = `<h2>Calendário</h2>`;
+      html += `
+        <label>Mês:
+          <select id="mes" onchange="atualizarCalendario()">
+            ${[...Array(12)].map((_, i) => {
+              const nome = new Date(0, i).toLocaleString("pt-BR", { month: "long" });
+              return `<option value="${i}" ${i === mesAtual ? "selected" : ""}>${nome}</option>`;
+            }).join('')}
+          </select>
+        </label>
+
+        <label>Ano:
+          <input type="number" id="ano" value="${anoAtual}" onchange="atualizarCalendario()">
+        </label>
+
+        <div id="calendarioMes"></div>
+      `;
+
+      document.getElementById("conteudo").innerHTML = html;
+      atualizarCalendario();
+    }
+
+    function atualizarCalendario() {
+      const mes = parseInt(document.getElementById("mes").value);
+      const ano = parseInt(document.getElementById("ano").value);
+      const registros = JSON.parse(localStorage.getItem("registros") || "{}");
+
+      const diasNoMes = new Date(ano, mes + 1, 0).getDate();
+      let html = `<ul>`;
+      for (let dia = 1; dia <= diasNoMes; dia++) {
+        const data = new Date(ano, mes, dia);
+        const iso = data.toISOString().split("T")[0];
+        if (registros[iso]) {
+          html += `
+            <li class="dia-com-registro">
+              <span>${iso}: Entrada ${registros[iso].entrada} - Saída ${registros[iso].saida}</span>
+              <button class="btn-excluir" onclick="excluirRegistro('${iso}')">Excluir</button>
+            </li>`;
+        } else {
+          html += `<li>${iso}: Sem registro</li>`;
+        }
+      }
+      html += `</ul>`;
+      document.getElementById("calendarioMes").innerHTML = html;
+    }
+
+    function excluirRegistro(data) {
+      const confirmacao = confirm(`Deseja realmente excluir o registro do dia ${data}?`);
+      if (confirmacao) {
+        const registros = JSON.parse(localStorage.getItem("registros") || "{}");
+        delete registros[data];
+        localStorage.setItem("registros", JSON.stringify(registros));
+        atualizarCalendario();
+        mostrarTodosRegistros();
+      }
+    }
+
+    function mostrarTodosRegistros() {
+      const registros = JSON.parse(localStorage.getItem("registros") || "{}");
+      if (Object.keys(registros).length === 0) {
+        document.getElementById("todosRegistros").innerHTML = `<h3>Todos os Registros</h3><p>Nenhum registro ainda.</p>`;
+        return;
+      }
+
+      let html = "<h3>Todos os Registros</h3><ul>";
+      for (const data of Object.keys(registros).sort()) {
+        html += `<li><strong>${data}</strong>: Entrada ${registros[data].entrada} - Saída ${registros[data].saida}</li>`;
+      }
+      html += "</ul>";
+      document.getElementById("todosRegistros").innerHTML = html;
+    }
+
+    async function gerarPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      const registros = JSON.parse(localStorage.getItem("registros") || "{}");
+      const chaves = Object.keys(registros).sort();
+
+      if (chaves.length === 0) {
+        alert("Nenhum registro encontrado.");
+        return;
+      }
+
+      doc.setFontSize(18);
+      doc.text("Relatório de Registros de Ponto", 10, 10);
+
+      let y = 20;
+      chaves.forEach((data, i) => {
+        doc.setFontSize(12);
+        const r = registros[data];
+        doc.text(`${i + 1}. Data: ${data} - Entrada: ${r.entrada} - Saída: ${r.saida}`, 10, y);
+        y += 10;
+        if (y > 280) {
+          doc.addPage();
+          y = 20;
+        }
+      });
+
+      doc.save("relatorio-banco-de-horas.pdf");
+    }
+
+    mostrarTodosRegistros();
+  </script>
+</body>
+</html>
