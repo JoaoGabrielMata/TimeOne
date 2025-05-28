@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Banco de Horas</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
@@ -28,6 +29,7 @@
     h1 {
       font-size: 36px;
       margin-bottom: 30px;
+      text-align: center;
     }
 
     .botao-container {
@@ -35,10 +37,12 @@
       flex-direction: column;
       gap: 15px;
       margin-bottom: 30px;
+      width: 100%;
+      max-width: 300px;
     }
 
     button {
-      width: 220px;
+      width: 100%;
       padding: 15px;
       font-size: 16px;
       border: none;
@@ -61,17 +65,24 @@
       padding: 20px;
       border-radius: 10px;
       max-width: 700px;
-      width: 90%;
+      width: 100%;
       margin-top: 20px;
       color: white;
     }
 
     input, select {
-      padding: 8px;
+      width: 100%;
+      padding: 12px;
       border-radius: 5px;
       border: none;
-      margin: 5px;
-      font-size: 14px;
+      margin-top: 5px;
+      margin-bottom: 15px;
+      font-size: 16px;
+    }
+
+    label {
+      display: block;
+      font-size: 16px;
     }
 
     ul {
@@ -85,8 +96,7 @@
       padding: 10px;
       border-radius: 5px;
       display: flex;
-      justify-content: space-between;
-      align-items: center;
+      flex-direction: column;
     }
 
     .dia-com-registro {
@@ -95,7 +105,7 @@
     }
 
     .btn-excluir {
-      margin-left: 10px;
+      margin-top: 5px;
       background: red;
       border: none;
       padding: 5px 10px;
@@ -104,6 +114,7 @@
       cursor: pointer;
       font-weight: bold;
       transition: background 0.3s;
+      align-self: flex-end;
     }
 
     .btn-excluir:hover {
@@ -111,7 +122,6 @@
     }
   </style>
 
-  <!-- Adiciona a biblioteca jsPDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
@@ -132,6 +142,8 @@
     function salvarRegistro() {
       const data = document.getElementById("data").value;
       const entrada = document.getElementById("entrada").value;
+      const almocoInicio = document.getElementById("almocoInicio").value;
+      const almocoFim = document.getElementById("almocoFim").value;
       const saida = document.getElementById("saida").value;
 
       if (!entrada || !saida) {
@@ -140,7 +152,7 @@
       }
 
       const registros = JSON.parse(localStorage.getItem("registros") || "{}");
-      registros[data] = { entrada, saida };
+      registros[data] = { entrada, almocoInicio, almocoFim, saida };
       localStorage.setItem("registros", JSON.stringify(registros));
       alert("Registro salvo!");
       mostrarTodosRegistros();
@@ -150,9 +162,11 @@
       const hoje = new Date().toISOString().split('T')[0];
       document.getElementById("conteudo").innerHTML = `
         <h2>Registrar Horário</h2>
-        <label>Data: <input type="date" id="data" value="${hoje}"></label><br>
-        <label>Entrada: <input type="time" id="entrada"></label><br>
-        <label>Saída: <input type="time" id="saida"></label><br>
+        <label>Data:<input type="date" id="data" value="${hoje}"></label>
+        <label>Entrada:<input type="time" id="entrada"></label>
+        <label>Início do Almoço:<input type="time" id="almocoInicio"></label>
+        <label>Fim do Almoço:<input type="time" id="almocoFim"></label>
+        <label>Saída:<input type="time" id="saida"></label>
         <button onclick="salvarRegistro()">Salvar</button>
       `;
     }
@@ -195,9 +209,10 @@
         const data = new Date(ano, mes, dia);
         const iso = data.toISOString().split("T")[0];
         if (registros[iso]) {
+          const r = registros[iso];
           html += `
             <li class="dia-com-registro">
-              <span>${iso}: Entrada ${registros[iso].entrada} - Saída ${registros[iso].saida}</span>
+              <span>${iso}: Entrada ${r.entrada}, Almoço ${r.almocoInicio || '--'} às ${r.almocoFim || '--'}, Saída ${r.saida}</span>
               <button class="btn-excluir" onclick="excluirRegistro('${iso}')">Excluir</button>
             </li>`;
         } else {
@@ -209,8 +224,7 @@
     }
 
     function excluirRegistro(data) {
-      const confirmacao = confirm(`Deseja realmente excluir o registro do dia ${data}?`);
-      if (confirmacao) {
+      if (confirm(`Deseja realmente excluir o registro do dia ${data}?`)) {
         const registros = JSON.parse(localStorage.getItem("registros") || "{}");
         delete registros[data];
         localStorage.setItem("registros", JSON.stringify(registros));
@@ -228,7 +242,8 @@
 
       let html = "<h3>Todos os Registros</h3><ul>";
       for (const data of Object.keys(registros).sort()) {
-        html += `<li><strong>${data}</strong>: Entrada ${registros[data].entrada} - Saída ${registros[data].saida}</li>`;
+        const r = registros[data];
+        html += `<li><strong>${data}</strong>: Entrada ${r.entrada}, Almoço ${r.almocoInicio || '--'} às ${r.almocoFim || '--'}, Saída ${r.saida}</li>`;
       }
       html += "</ul>";
       document.getElementById("todosRegistros").innerHTML = html;
@@ -251,9 +266,10 @@
 
       let y = 20;
       chaves.forEach((data, i) => {
-        doc.setFontSize(12);
         const r = registros[data];
-        doc.text(`${i + 1}. Data: ${data} - Entrada: ${r.entrada} - Saída: ${r.saida}`, 10, y);
+        const almoco = `Almoço: ${r.almocoInicio || '--'} às ${r.almocoFim || '--'}`;
+        doc.setFontSize(12);
+        doc.text(`${i + 1}. ${data} - Entrada: ${r.entrada}, ${almoco}, Saída: ${r.saida}`, 10, y);
         y += 10;
         if (y > 280) {
           doc.addPage();
