@@ -1,8 +1,8 @@
-# ⏰ Banco de Horas
+# ⏰ Time One
 
 > Acompanhe e registre seus horários de entrada, saída e intervalo de forma prática e totalmente offline.
 
-**Banco de Horas** é uma aplicação web simples e funcional feita em **HTML, CSS e JavaScript puro**. É ideal para trabalhadores, freelancers ou estudantes que queiram controlar sua carga horária diária e gerar relatórios em PDF — tudo salvo no navegador, sem login ou servidor.
+**Time One** é uma aplicação web simples e funcional feita em **HTML, CSS e JavaScript puro**. É ideal para trabalhadores, freelancers ou estudantes que queiram controlar sua carga horária diária e gerar relatórios em PDF — tudo salvo no navegador, sem login ou servidor.
 
 ---
 
